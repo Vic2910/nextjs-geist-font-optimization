@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(DOCTOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations based on role
+  prescriptions      Prescription[] @relation("DoctorPrescriptions")
+  labTestRequests    LabTest[]     @relation("RequestedByDoctor")
+  xrayRequests       XrayRequest[] @relation("RequestedByDoctor")
+  appointments       Appointment[] @relation("DoctorAppointments")
+  patientsRegistered Patient[]     @relation("RegisteredByReceptionist")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST
+  LABORATORY
+  PHARMACY
+  XRAY
+}
+
+model Patient {
+  id           String   @id @default(cuid())
+  name         String
+  age          Int
+  gender       String
+  contact      String
+  address      String
+  registeredBy User     @relation("RegisteredByReceptionist", fields: [userId], references: [id])
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  appointments  Appointment[]
+  prescriptions Prescription[]
+  labTests      LabTest[]
+  xrayRequests  XrayRequest[]
+  medicalRecord MedicalRecord[]
+}
+
+model Appointment {
+  id        String   @id @default(cuid())
+  date      DateTime
+  time      String
+  status    String   @default("scheduled") // scheduled, completed, cancelled
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  doctor    User     @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  doctorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  diagnosis   String
+  notes       String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Prescription {
+  id          String   @id @default(cuid())
+  medications String
+  dosage      String
+  notes       String?
+  status      String   @default("pending") // pending, dispensed
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  doctor      User     @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  doctorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LabTest {
+  id          String   @id @default(cuid())
+  testType    String
+  result      String?
+  notes       String?
+  status      String   @default("pending") // pending, in_progress, completed
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  requestedBy User     @relation("RequestedByDoctor", fields: [doctorId], references: [id])
+  doctorId    String
+  technician  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model XrayRequest {
+  id          String   @id @default(cuid())
+  type        String
+  imageUrl    String?
+  notes       String?
+  status      String   @default("pending") // pending, completed
+  priority    String   @default("normal") // normal, high
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  requestedBy User     @relation("RequestedByDoctor", fields: [doctorId], references: [id])
+  doctorId    String
+  technician  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Medication {
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  quantity   Int
+  unit       String
+  expiryDate DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
